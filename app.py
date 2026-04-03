@@ -51,7 +51,9 @@ st.markdown(
 
     .hero-card img {
         width: 100%;
-        height: 420px;
+        height: 38vh;          /* 画面高さの38%に制限 */
+        max-height: 320px;     /* PC表示の上限 */
+        min-height: 160px;     /* 極端に小さくなる防止 */
         object-fit: contain;
         object-position: center;
         display: block;
@@ -75,15 +77,15 @@ st.markdown(
     }
 
     .hero-card .hero-title {
-        font-size: 2rem;
+        font-size: clamp(1.2rem, 4vw, 2rem); /* 画面幅に応じて自動調整 */
         font-weight: bold;
-        margin: 0 0 6px 0;
+        margin: 0 0 4px 0;
         text-shadow: 0 2px 8px rgba(0,0,0,0.6);
         line-height: 1.3;
     }
 
     .hero-card .hero-subtitle {
-        font-size: 1rem;
+        font-size: clamp(0.8rem, 3vw, 1rem);
         margin: 0;
         opacity: 0.9;
         text-shadow: 0 1px 4px rgba(0,0,0,0.5);
@@ -94,9 +96,9 @@ st.markdown(
         background: rgba(255,255,255,0.25);
         border: 1px solid rgba(255,255,255,0.5);
         border-radius: 20px;
-        padding: 4px 14px;
-        font-size: 0.85rem;
-        margin-bottom: 10px;
+        font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+        padding: 3px 10px;
+        margin-bottom: 6px;
         backdrop-filter: blur(4px);
     }
 
@@ -113,10 +115,11 @@ st.markdown(
 
     .hero-card-yoshiki img {
         width: 100%;
-        height: auto;          /* 縦長画像をそのまま表示 */
-        max-height: 620px;     /* 長すぎる場合の上限 */
+        height: 45vh;          /* 縦長画像なので少し大きめ */
+        max-height: 420px;
+        min-height: 200px;
         object-fit: contain;
-        object-position: center top; /* 上側（顔）を優先して表示 */
+        object-position: center top;
         display: block;
         background-color: #1a1a2e;
     }
@@ -138,15 +141,15 @@ st.markdown(
     }
 
     .hero-card-yoshiki .hero-title {
-        font-size: 2rem;
+        font-size: clamp(1.2rem, 4vw, 2rem); /* 画面幅に応じて自動調整 */
         font-weight: bold;
-        margin: 0 0 6px 0;
+        margin: 0 0 4px 0;
         text-shadow: 0 2px 8px rgba(0,0,0,0.7);
         line-height: 1.3;
     }
 
     .hero-card-yoshiki .hero-subtitle {
-        font-size: 1rem;
+        font-size: clamp(0.8rem, 3vw, 1rem);
         margin: 0;
         opacity: 0.92;
         text-shadow: 0 1px 4px rgba(0,0,0,0.6);
@@ -157,9 +160,9 @@ st.markdown(
         background: rgba(255, 80, 80, 0.35);
         border: 1px solid rgba(255, 120, 120, 0.6);
         border-radius: 20px;
-        padding: 4px 14px;
-        font-size: 0.85rem;
-        margin-bottom: 10px;
+        font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+        padding: 3px 10px;
+        margin-bottom: 6px;
         backdrop-filter: blur(4px);
         color: white;
     }
@@ -169,11 +172,12 @@ st.markdown(
         color: white !important;
         border: none !important;
         border-radius: 50px !important;
-        padding: 14px 40px !important;
-        font-size: 1.1rem !important;
+        padding: 10px 20px !important;
+        font-size: clamp(0.85rem, 3vw, 1.1rem) !important;
         font-weight: bold !important;
         width: 100% !important;
         box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4) !important;
+        margin-top: 8px !important;
     }
 
     .stButton > button:hover {
@@ -184,6 +188,13 @@ st.markdown(
     .stProgress > div > div {
         background: linear-gradient(90deg, #ff6b9d, #a855f7) !important;
         border-radius: 10px !important;
+    }
+
+    .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
     }
     </style>
     """,
