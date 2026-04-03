@@ -27,6 +27,13 @@ _CAVALIER_IMAGES = [
     if f.lower().endswith((".jpg", ".jpeg", ".png"))
 ] if os.path.isdir(_ASSETS_DIR) else []
 
+YOSHIKI_IMAGE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "images", "yoshiki")
+_YOSHIKI_IMAGES = [
+    os.path.join(YOSHIKI_IMAGE_DIR, f)
+    for f in os.listdir(YOSHIKI_IMAGE_DIR)
+    if f.lower().endswith((".jpg", ".jpeg", ".png"))
+] if os.path.isdir(YOSHIKI_IMAGE_DIR) else []
+
 
 def _build_url(breed: str, sub: str | None, suffix: str) -> str:
     if sub:
@@ -34,7 +41,13 @@ def _build_url(breed: str, sub: str | None, suffix: str) -> str:
     return f"{_BASE}/{breed}/{suffix}"
 
 
-def build_hero_card_html(image_source: str, title: str, subtitle: str = "", badge: str = "") -> str:
+def build_hero_card_html(
+    image_source: str,
+    title: str,
+    subtitle: str = "",
+    badge: str = "",
+    card_class: str = "hero-card",
+) -> str:
     """ヒーローカードのHTMLを生成して返す。エラー時は空文字列を返す。"""
     try:
         if image_source.startswith("http"):
@@ -52,7 +65,7 @@ def build_hero_card_html(image_source: str, title: str, subtitle: str = "", badg
         badge_html = f'<span class="hero-badge">{badge}</span>' if badge else ""
         subtitle_html = f'<p class="hero-subtitle">{subtitle}</p>' if subtitle else ""
 
-        return f"""<div class="hero-card">
+        return f"""<div class="{card_class}">
   <img src="{image_src}" alt="{title}">
   <div class="hero-overlay">
     {badge_html}
@@ -66,6 +79,9 @@ def build_hero_card_html(image_source: str, title: str, subtitle: str = "", badg
 
 def get_random_dog_image(breed_key: str) -> str | None:
     """breed_key（日本語犬種名）に対応するランダム画像URL1枚を返す。失敗時はNone。"""
+    if breed_key == "__YOSHIKI__":
+        return random.choice(_YOSHIKI_IMAGES) if _YOSHIKI_IMAGES else None
+
     entry = BREED_MAP.get(breed_key)
     if entry is None:
         return None
