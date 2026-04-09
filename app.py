@@ -279,9 +279,17 @@ def load_sushi_data() -> dict:
         return json.load(f)
 
 
+@st.cache_data
+def load_gambler_data() -> dict:
+    path = os.path.join(BASE_DIR, "data", "gambler_scoring.json")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 data = load_data()
 tennis_data = load_tennis_data()
 sushi_data = load_sushi_data()
+gambler_data = load_gambler_data()
 
 ALL_BREEDS = list(BREED_MAP.keys())
 
@@ -335,6 +343,9 @@ def init_state() -> None:
         "sushi_quiz_images": {},
         "sushi_start_image": None,
         "sushi_result_image": None,
+        # ギャンブラー診断
+        "gambler_scores": 0,
+        "gambler_q_index": 0,
     }
     for key, val in defaults.items():
         if key not in st.session_state:
@@ -368,6 +379,9 @@ def reset_to_home() -> None:
     st.session_state.sushi_quiz_images = {}
     st.session_state.sushi_start_image = None
     st.session_state.sushi_result_image = None
+    # ギャンブラー診断関連
+    st.session_state.gambler_scores = 0
+    st.session_state.gambler_q_index = 0
     for key in ("answers", "q_index", "quiz_images",
                 "sushi_answers", "sushi_start_image_url", "sushi_result_image_url"):
         st.session_state.pop(key, None)
@@ -417,6 +431,11 @@ if st.session_state.page == "home":
     if st.button("🍣 回転寿司チェーン診断", use_container_width=True):
         st.session_state.mode = "sushi"
         st.session_state.page = "sushi_start"
+        st.rerun()
+
+    if st.button("🎰 隠れギャンブラー診断", use_container_width=True):
+        st.session_state["mode"] = "gambler"
+        st.session_state["page"] = "gambler_start"
         st.rerun()
 
 # ─────────────────────────────────────────────
@@ -684,5 +703,112 @@ elif st.session_state.page == "sushi_result":
             st.session_state.pop("sushi_answers", None)
             st.session_state.page = "sushi_start"
             st.rerun()
+
+    _back_to_home_button()
+
+# ─────────────────────────────────────────────
+# ギャンブラー診断: スタート画面
+# ─────────────────────────────────────────────
+elif st.session_state.page == "gambler_start":
+
+    st.markdown(build_hero_card_no_image_html(
+        title="隠れギャンブラー診断",
+        subtitle="10の質問であなたの隠れたギャンブラー性を暴きます",
+        badge="全10問・約2分",
+    ), unsafe_allow_html=True)
+
+    if st.button("診断スタート！", use_container_width=True):
+        st.session_state["page"] = "gambler_quiz"
+        st.session_state["gambler_scores"] = 0
+        st.session_state["gambler_q_index"] = 0
+        st.rerun()
+
+    _back_to_home_button()
+
+# ─────────────────────────────────────────────
+# ギャンブラー診断: クイズ画面
+# ─────────────────────────────────────────────
+elif st.session_state.page == "gambler_quiz":
+    questions = gambler_data["questions"]
+    total_q = len(questions)
+    current_idx = st.session_state["gambler_q_index"]
+
+    question = questions[current_idx]
+
+    st.markdown(build_hero_card_no_image_html(
+        title=question["question"],
+        badge=f"Q{current_idx + 1} / {total_q}",
+    ), unsafe_allow_html=True)
+
+    st.progress(current_idx / total_q)
+
+    for choice in question["choices"]:
+        btn_label = f"　{choice['label']}）  {choice['text']}"
+        if st.button(btn_label, key=f"gambler_q{current_idx}_{choice['label']}", use_container_width=True):
+            st.session_state["gambler_scores"] += choice["score"]
+            st.session_state["gambler_q_index"] += 1
+            if st.session_state["gambler_q_index"] >= total_q:
+                st.session_state["page"] = "gambler_result"
+            st.rerun()
+
+    _back_to_home_button()
+
+# ─────────────────────────────────────────────
+# ギャンブラー診断: 結果画面
+# ─────────────────────────────────────────────
+elif st.session_state.page == "gambler_result":
+    raw_score = st.session_state.get("gambler_scores", 0)
+    gambler_index = round(raw_score / 30 * 100)
+
+    result_item = next(
+        (r for r in gambler_data["results"] if r["min"] <= gambler_index <= r["max"]),
+        gambler_data["results"][-1],
+    )
+    result_type = result_item["type"]
+    result_emoji = result_item["emoji"]
+    result_message = result_item["message"]
+
+    st.markdown(build_hero_card_no_image_html(
+        title=f"{result_emoji} あなたの隠れギャンブラー指数",
+        subtitle=f"{result_type}（{gambler_index}%）",
+        badge="診断結果 🎰",
+    ), unsafe_allow_html=True)
+
+    st.progress(gambler_index / 100)
+
+    st.markdown(f"""
+<div style="text-align:center; font-size:4rem;
+font-weight:bold; color:#a855f7; margin:16px 0;">
+{gambler_index}%
+</div>
+<div style="text-align:center; font-size:1.4rem;
+font-weight:bold; margin-bottom:16px;">
+{result_emoji} {result_type}
+</div>
+""", unsafe_allow_html=True)
+
+    st.markdown(
+        f"""
+        <div style="
+            background: rgba(255,255,255,0.85);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin: 16px 0;
+            box-shadow: 0 4px 16px rgba(168,85,247,0.15);
+            font-size: 1rem;
+            line-height: 1.7;
+            color: #333;
+        ">
+        {result_message}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if st.button("🔄 もう一度診断する", use_container_width=True):
+        st.session_state["gambler_scores"] = 0
+        st.session_state["gambler_q_index"] = 0
+        st.session_state["page"] = "gambler_start"
+        st.rerun()
 
     _back_to_home_button()
