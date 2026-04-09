@@ -77,6 +77,19 @@ def build_hero_card_html(
         return ""
 
 
+def build_hero_card_no_image_html(title: str, subtitle: str = "", badge: str = "") -> str:
+    """画像なしバージョンのヒーローカードを生成して返す。背景はグラデーションのみ。"""
+    badge_html = f'<span class="hero-badge">{badge}</span>' if badge else ""
+    subtitle_html = f'<p class="hero-subtitle">{subtitle}</p>' if subtitle else ""
+    return f"""<div class="hero-card-no-image">
+  <div class="hero-overlay-static">
+    {badge_html}
+    <p class="hero-title">{title}</p>
+    {subtitle_html}
+  </div>
+</div>"""
+
+
 def get_random_dog_image(breed_key: str) -> str | None:
     """breed_key（日本語犬種名）に対応するランダム画像URL1枚を返す。失敗時はNone。"""
     if breed_key == "__YOSHIKI__":

@@ -14,6 +14,7 @@ from components.result import show_result
 from components.dog_image import (
     get_random_dog_image,
     build_hero_card_html,
+    build_hero_card_no_image_html,
     BREED_MAP,
     prefetch_all_breed_images,
     _CAVALIER_IMAGES,
@@ -201,6 +202,53 @@ st.markdown(
         padding-bottom: 0.5rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
+    }
+
+    .hero-card-no-image {
+        position: relative;
+        width: 100%;
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 24px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+        background: linear-gradient(135deg, #ff6b9d 0%, #a855f7 100%);
+        min-height: 200px;
+        display: flex;
+        align-items: flex-end;
+    }
+
+    .hero-card-no-image .hero-overlay-static {
+        width: 100%;
+        padding: 32px 28px 24px 28px;
+        color: white;
+        box-sizing: border-box;
+    }
+
+    .hero-card-no-image .hero-title {
+        font-size: clamp(1.2rem, 4vw, 2rem);
+        font-weight: bold;
+        margin: 0 0 6px 0;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        line-height: 1.3;
+        color: white;
+    }
+
+    .hero-card-no-image .hero-subtitle {
+        font-size: clamp(0.8rem, 3vw, 1rem);
+        margin: 0;
+        opacity: 0.92;
+        color: white;
+    }
+
+    .hero-card-no-image .hero-badge {
+        display: inline-block;
+        background: rgba(255,255,255,0.25);
+        border: 1px solid rgba(255,255,255,0.5);
+        border-radius: 20px;
+        padding: 4px 14px;
+        font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+        margin-bottom: 10px;
+        color: white;
     }
     </style>
     """,
@@ -511,13 +559,16 @@ elif st.session_state.page == "sushi_start":
     if st.session_state.sushi_start_image:
         st.markdown(build_hero_card_html(
             image_source=st.session_state.sushi_start_image,
-            title="🍣 回転寿司チェーン診断",
+            title="回転寿司チェーン診断",
             subtitle="9つの質問に答えて、あなたにぴったりの回転寿司チェーンを診断します",
             badge="全9問・約2分",
         ), unsafe_allow_html=True)
     else:
-        st.markdown("## 🍣 回転寿司チェーン診断")
-        st.markdown("9つの質問に答えて、あなたにぴったりの回転寿司チェーンを診断します")
+        st.markdown(build_hero_card_no_image_html(
+            title="回転寿司チェーン診断",
+            subtitle="9つの質問に答えて、あなたにぴったりの回転寿司チェーンを診断します",
+            badge="全9問・約2分",
+        ), unsafe_allow_html=True)
 
     if st.button("診断スタート！", use_container_width=True):
         st.session_state.page = "sushi_quiz"
@@ -552,8 +603,10 @@ elif st.session_state.page == "sushi_quiz":
             badge=f"Q{current_idx + 1} / {total_q}",
         ), unsafe_allow_html=True)
     else:
-        st.markdown(f"**Q{current_idx + 1} / {total_q}**")
-        st.markdown(f"### {question['question']}")
+        st.markdown(build_hero_card_no_image_html(
+            title=question["question"],
+            badge=f"Q{current_idx + 1} / {total_q}",
+        ), unsafe_allow_html=True)
 
     st.progress(current_idx / total_q)
 
@@ -599,17 +652,21 @@ elif st.session_state.page == "sushi_result":
         message = chain_info["message"]
         message_lines = [line for line in message.split("\n") if line.strip()]
         subtitle = message_lines[1] if len(message_lines) > 1 else message_lines[0]
-        title = f"あなたは「{result_chain}」タイプです！{chain_info['emoji']}"
+        title = f"あなたは「{result_chain}」タイプです！"
 
         if result_img:
             st.markdown(build_hero_card_html(
                 image_source=result_img,
                 title=title,
                 subtitle=subtitle,
-                badge="診断結果 🍣",
+                badge="診断結果",
             ), unsafe_allow_html=True)
         else:
-            st.markdown(f"## {title}")
+            st.markdown(build_hero_card_no_image_html(
+                title=title,
+                subtitle=subtitle,
+                badge="診断結果",
+            ), unsafe_allow_html=True)
 
         st.markdown(message)
 
