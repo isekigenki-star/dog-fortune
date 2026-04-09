@@ -11,7 +11,13 @@ sys.path.insert(0, BASE_DIR)
 
 from components.questions import show_question
 from components.result import show_result
-from components.dog_image import get_random_dog_image, build_hero_card_html, BREED_MAP, prefetch_all_breed_images
+from components.dog_image import (
+    get_random_dog_image,
+    build_hero_card_html,
+    BREED_MAP,
+    prefetch_all_breed_images,
+    _CAVALIER_IMAGES,
+)
 
 # ─────────────────────────────────────────────
 # ページ設定
@@ -218,10 +224,39 @@ def load_tennis_data() -> dict:
         return json.load(f)
 
 
+@st.cache_data
+def load_sushi_data() -> dict:
+    path = os.path.join(BASE_DIR, "data", "sushi_scoring.json")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 data = load_data()
 tennis_data = load_tennis_data()
+sushi_data = load_sushi_data()
 
 ALL_BREEDS = list(BREED_MAP.keys())
+
+# ─────────────────────────────────────────────
+# 寿司画像ヘルパー
+# ─────────────────────────────────────────────
+_SUSHI_DIR = os.path.join(BASE_DIR, "assets", "images", "sushi")
+_SUSHI_IMAGES: list[str] = (
+    [
+        os.path.join(_SUSHI_DIR, f)
+        for f in os.listdir(_SUSHI_DIR)
+        if f.lower().endswith((".jpg", ".jpeg", ".png"))
+    ]
+    if os.path.isdir(_SUSHI_DIR)
+    else []
+)
+
+_SUSHI_CHAIN_FILES: dict[str, str] = {
+    "スシロー": "sushiro.jpg",
+    "くら寿司": "kura.jpg",
+    "はま寿司": "hama.jpg",
+    "かっぱ寿司": "kappa.jpg",
+}
 
 
 def _get_tennis_breeds() -> list[str]:
@@ -238,13 +273,20 @@ def _get_tennis_breeds() -> list[str]:
 # ─────────────────────────────────────────────
 def init_state() -> None:
     defaults = {
-        "page": "start",
+        "page": "home",
         "mode": None,
         "current_q": 0,
         "scores": {},
         "start_image_url": None,
         "quiz_image_urls": {},
         "result_image_url": None,
+        "home_image": None,
+        # 寿司診断
+        "sushi_q_index": 0,
+        "sushi_scores": {},
+        "sushi_quiz_images": {},
+        "sushi_start_image": None,
+        "sushi_result_image": None,
     }
     for key, val in defaults.items():
         if key not in st.session_state:
@@ -252,6 +294,7 @@ def init_state() -> None:
 
 
 def reset() -> None:
+    """犬種診断をリセットして start に戻る（もう一度診断する用）。"""
     st.session_state.page = "start"
     st.session_state.mode = None
     st.session_state.current_q = 0
@@ -261,12 +304,77 @@ def reset() -> None:
     st.session_state.result_image_url = None
 
 
+def reset_to_home() -> None:
+    """全状態をリセットしてホーム画面に戻る。"""
+    st.session_state.page = "home"
+    st.session_state.mode = None
+    # 犬種診断関連
+    st.session_state.current_q = 0
+    st.session_state.scores = {}
+    st.session_state.start_image_url = None
+    st.session_state.quiz_image_urls = {}
+    st.session_state.result_image_url = None
+    # 回転寿司診断関連
+    st.session_state.sushi_q_index = 0
+    st.session_state.sushi_scores = {}
+    st.session_state.sushi_quiz_images = {}
+    st.session_state.sushi_start_image = None
+    st.session_state.sushi_result_image = None
+    for key in ("answers", "q_index", "quiz_images",
+                "sushi_answers", "sushi_start_image_url", "sushi_result_image_url"):
+        st.session_state.pop(key, None)
+
+
+def _back_to_home_button() -> None:
+    """「← 診断メニューに戻る」ボタンを各ページ最下部に表示する。"""
+    st.markdown("---")
+    if st.button("← 診断メニューに戻る", use_container_width=True):
+        reset_to_home()
+        st.rerun()
+
+
 init_state()
 
 # ─────────────────────────────────────────────
-# スタート画面
+# ホーム画面
 # ─────────────────────────────────────────────
-if st.session_state.page == "start":
+if st.session_state.page == "home":
+
+    # 背景画像: sushi または cavalier からランダムに1枚（初回のみ選択）
+    if st.session_state.home_image is None:
+        all_bg = _CAVALIER_IMAGES + _SUSHI_IMAGES
+        st.session_state.home_image = random.choice(all_bg) if all_bg else ""
+
+    if st.session_state.home_image:
+        st.markdown(build_hero_card_html(
+            image_source=st.session_state.home_image,
+            title="🎯 あなたはどのタイプ？",
+            subtitle="診断したい項目を選んでください",
+            badge="診断メニュー",
+        ), unsafe_allow_html=True)
+    else:
+        st.markdown("## 🎯 あなたはどのタイプ？")
+        st.markdown("診断したい項目を選んでください")
+
+    if st.button("🐶 犬種診断（通常）", use_container_width=True):
+        st.session_state.mode = "normal"
+        st.session_state.page = "start"
+        st.rerun()
+
+    if st.button("🎾 犬種診断（テニス部専用）", use_container_width=True):
+        st.session_state.mode = "tennis"
+        st.session_state.page = "start"
+        st.rerun()
+
+    if st.button("🍣 回転寿司チェーン診断", use_container_width=True):
+        st.session_state.mode = "sushi"
+        st.session_state.page = "sushi_start"
+        st.rerun()
+
+# ─────────────────────────────────────────────
+# スタート画面（犬種診断）
+# ─────────────────────────────────────────────
+elif st.session_state.page == "start":
 
     # 全犬種画像を一括プリフェッチ（初回のみ）
     if "breed_image_cache" not in st.session_state:
@@ -301,8 +409,10 @@ if st.session_state.page == "start":
             st.session_state.page = "quiz"
             st.rerun()
 
+    _back_to_home_button()
+
 # ─────────────────────────────────────────────
-# クイズ画面
+# クイズ画面（犬種診断）
 # ─────────────────────────────────────────────
 elif st.session_state.page == "quiz":
     mode = st.session_state.get("mode", "normal")
@@ -337,8 +447,10 @@ elif st.session_state.page == "quiz":
 
     show_question(question, active_data)
 
+    _back_to_home_button()
+
 # ─────────────────────────────────────────────
-# 結果画面
+# 結果画面（犬種診断）
 # ─────────────────────────────────────────────
 elif st.session_state.page == "result":
     mode = st.session_state.get("mode", "normal")
@@ -385,3 +497,135 @@ elif st.session_state.page == "result":
         # テニスモードの場合は __YOSHIKI__ をスコアから除外して show_result へ渡す
         display_scores = {k: v for k, v in scores.items() if k != "__YOSHIKI__"}
         show_result(display_scores, data["breeds"], reset)
+
+    _back_to_home_button()
+
+# ─────────────────────────────────────────────
+# 回転寿司診断: スタート画面
+# ─────────────────────────────────────────────
+elif st.session_state.page == "sushi_start":
+
+    if st.session_state.sushi_start_image is None:
+        st.session_state.sushi_start_image = random.choice(_SUSHI_IMAGES) if _SUSHI_IMAGES else ""
+
+    if st.session_state.sushi_start_image:
+        st.markdown(build_hero_card_html(
+            image_source=st.session_state.sushi_start_image,
+            title="🍣 回転寿司チェーン診断",
+            subtitle="9つの質問に答えて、あなたにぴったりの回転寿司チェーンを診断します",
+            badge="全9問・約2分",
+        ), unsafe_allow_html=True)
+    else:
+        st.markdown("## 🍣 回転寿司チェーン診断")
+        st.markdown("9つの質問に答えて、あなたにぴったりの回転寿司チェーンを診断します")
+
+    if st.button("診断スタート！", use_container_width=True):
+        st.session_state.page = "sushi_quiz"
+        st.session_state.sushi_answers = {}
+        st.session_state.sushi_q_index = 0
+        st.session_state.sushi_scores = {chain: 0 for chain in sushi_data["results"]}
+        st.rerun()
+
+    _back_to_home_button()
+
+# ─────────────────────────────────────────────
+# 回転寿司診断: クイズ画面
+# ─────────────────────────────────────────────
+elif st.session_state.page == "sushi_quiz":
+    questions = sushi_data["questions"]
+    total_q = len(questions)
+    current_idx = st.session_state.sushi_q_index
+
+    # 画像：質問ごとに固定（セッション内）
+    if current_idx not in st.session_state.sushi_quiz_images:
+        img = random.choice(_SUSHI_IMAGES) if _SUSHI_IMAGES else ""
+        st.session_state.sushi_quiz_images[current_idx] = img
+
+    quiz_img = st.session_state.sushi_quiz_images[current_idx]
+    question = questions[current_idx]
+
+    if quiz_img:
+        st.markdown(build_hero_card_html(
+            image_source=quiz_img,
+            title=question["question"],
+            subtitle="",
+            badge=f"Q{current_idx + 1} / {total_q}",
+        ), unsafe_allow_html=True)
+    else:
+        st.markdown(f"**Q{current_idx + 1} / {total_q}**")
+        st.markdown(f"### {question['question']}")
+
+    st.progress(current_idx / total_q)
+
+    for choice in question["choices"]:
+        btn_label = f"　{choice['label']}）  {choice['text']}"
+        if st.button(btn_label, key=f"sushi_q{current_idx}_{choice['label']}", use_container_width=True):
+            if "sushi_scores" not in st.session_state or not st.session_state.sushi_scores:
+                st.session_state.sushi_scores = {chain: 0 for chain in sushi_data["results"]}
+            for chain, score in choice["scores"].items():
+                st.session_state.sushi_scores[chain] = st.session_state.sushi_scores.get(chain, 0) + score
+            st.session_state.sushi_q_index += 1
+            if st.session_state.sushi_q_index >= total_q:
+                st.session_state.page = "sushi_result"
+            st.rerun()
+
+    _back_to_home_button()
+
+# ─────────────────────────────────────────────
+# 回転寿司診断: 結果画面
+# ─────────────────────────────────────────────
+elif st.session_state.page == "sushi_result":
+    scores = st.session_state.get("sushi_scores", {})
+    results = sushi_data["results"]
+
+    max_score = max(scores.values()) if scores else 0
+    result_chain = next((c for c, s in scores.items() if s == max_score), None)
+
+    if result_chain and result_chain in results:
+        chain_info = results[result_chain]
+
+        # 結果画像（初回のみ決定）
+        if st.session_state.sushi_result_image is None:
+            chain_file = _SUSHI_CHAIN_FILES.get(result_chain)
+            chain_img_path = os.path.join(_SUSHI_DIR, chain_file) if chain_file else None
+            if chain_img_path and os.path.isfile(chain_img_path):
+                st.session_state.sushi_result_image = chain_img_path
+            elif _SUSHI_IMAGES:
+                st.session_state.sushi_result_image = random.choice(_SUSHI_IMAGES)
+            else:
+                st.session_state.sushi_result_image = ""
+
+        result_img = st.session_state.sushi_result_image
+        message = chain_info["message"]
+        message_lines = [line for line in message.split("\n") if line.strip()]
+        subtitle = message_lines[1] if len(message_lines) > 1 else message_lines[0]
+        title = f"あなたは「{result_chain}」タイプです！{chain_info['emoji']}"
+
+        if result_img:
+            st.markdown(build_hero_card_html(
+                image_source=result_img,
+                title=title,
+                subtitle=subtitle,
+                badge="診断結果 🍣",
+            ), unsafe_allow_html=True)
+        else:
+            st.markdown(f"## {title}")
+
+        st.markdown(message)
+
+        with st.expander("全チェーンのスコアを見る"):
+            for chain, score in sorted(scores.items(), key=lambda x: -x[1]):
+                chain_emoji = results.get(chain, {}).get("emoji", "")
+                st.write(f"{chain_emoji} {chain}: {score}点")
+
+        if st.button("🔄 もう一度診断する", use_container_width=True):
+            st.session_state.sushi_q_index = 0
+            st.session_state.sushi_scores = {}
+            st.session_state.sushi_quiz_images = {}
+            st.session_state.sushi_start_image = None
+            st.session_state.sushi_result_image = None
+            st.session_state.pop("sushi_answers", None)
+            st.session_state.page = "sushi_start"
+            st.rerun()
+
+    _back_to_home_button()
